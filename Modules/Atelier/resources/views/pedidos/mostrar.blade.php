@@ -11,6 +11,9 @@
         <div>
             <h1 class="text-lg font-semibold text-slate-900">Pedido #{{ $pedido->id }} — {{ $pedido->cliente?->nome }}</h1>
             <p class="text-sm text-slate-500">{{ $pedido->tipoServicoRotulo() }}</p>
+            @if ($podeVerFinancas && $pedido->cliente_id)
+                <p class="mt-1 text-xs"><a href="{{ route('atelier.crm.editar', $pedido->cliente_id) }}" class="text-indigo-600 hover:underline">Dados do cliente (aniversário e consentimento)</a></p>
+            @endif
         </div>
         @include('atelier::partials.estado-badge', ['estado' => $pedido->status, 'rotulo' => $pedido->statusRotulo(), 'classe' => 'text-sm'])
     </div>
@@ -42,7 +45,7 @@
             <div class="rounded-md border border-slate-200 bg-white p-5">
                 <h2 class="mb-3 text-sm font-semibold text-slate-700">Avançar estado</h2>
                 @if (empty($proximosEstados))
-                    <p class="text-sm text-slate-500">Este pedido está num estado final.</p>
+                    <p class="text-sm text-slate-500">{{ $pedido->estaFinalizado() ? 'Este pedido está num estado final.' : 'Não tens ações disponíveis neste pedido.' }}</p>
                 @else
                     <div class="flex flex-wrap gap-2">
                         @foreach ($proximosEstados as $estado)

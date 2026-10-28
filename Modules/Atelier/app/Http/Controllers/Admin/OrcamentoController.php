@@ -22,6 +22,8 @@ class OrcamentoController extends Controller
 {
     public function index(): View
     {
+        abort_unless(request()->user()?->hasAnyRole(['Administrador', 'Secretária']), 403);
+
         return view('atelier::orcamentos.index', [
             'orcamentos' => PedidoOrcamento::latest('id')->paginate(20),
         ]);

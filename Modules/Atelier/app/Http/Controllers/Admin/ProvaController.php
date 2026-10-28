@@ -21,6 +21,8 @@ class ProvaController extends Controller
     {
         $pedido = Pedido::findOrFail($pedido);
 
+        abort_if($pedido->estaFinalizado(), 422, 'Não é possível agendar provas num pedido já finalizado.');
+
         $pedido->provas()->create([
             'empresa_id' => $pedido->empresa_id,
             'tipo' => $request->validated('tipo'),
@@ -42,6 +44,11 @@ class ProvaController extends Controller
         $prova = Prova::findOrFail($prova);
 
         $dados = ['estado' => $request->validated('estado')];
+
+        if ($dados['estado'] !== 'reagendada') {
+            // A proposta do cliente já foi tratada (aceite com nova data, ou recusada).
+            $dados['data_hora_proposta_cliente'] = null;
+        }
 
         if ($request->validated('notas') !== null) {
             $dados['notas'] = $request->validated('notas');

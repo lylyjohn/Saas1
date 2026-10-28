@@ -39,10 +39,29 @@ class PedidoStatusService
                 throw PedidoException::transicaoInvalida($estadoAnterior, $novoEstado);
             }
 
+            // Política opcional (ATELIER_EXIGIR_PAGAMENTO_PARA_ENTREGA, desligada
+            // por omissão): só entrega depois de o saldo estar pago.
+            if (
+                $novoEstado === 'entregue'
+                && config('atelier.exigir_pagamento_para_entrega')
+                && ! $bloqueado->recibo_saldo_final_id
+                && $bloqueado->saldoEmFalta() > 0
+            ) {
+                throw PedidoException::pagamentoPendente();
+            }
+
             $bloqueado->status = $novoEstado;
 
             if ($novoEstado === 'cancelado') {
                 $bloqueado->motivo_cancelamento = $motivoCancelamento;
+
+                if ($bloqueado->jaTemSinalRegistado()) {
+                    Log::warning('Pedido cancelado com sinal já recebido — a devolução ou regularização tem de ser tratada manualmente.', [
+                        'pedido_id' => $bloqueado->id,
+                        'empresa_id' => $bloqueado->empresa_id,
+                        'recibo_sinal_id' => $bloqueado->recibo_sinal_id,
+                    ]);
+                }
             }
 
             $bloqueado->save();

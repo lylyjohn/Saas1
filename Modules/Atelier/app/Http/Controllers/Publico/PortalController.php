@@ -57,12 +57,14 @@ class PortalController extends Controller
         $clienteModel = $this->resolverCliente($cliente);
         $provaModel = $this->resolverProva(provaId: $prova, clienteId: $clienteModel->id);
 
+        abort_if($provaModel->estado === 'concluida' || $provaModel->pedido?->estaFinalizado(), 404);
+
         if ($request->isMethod('get')) {
             return view('atelier::portal.reagendar', ['cliente' => $clienteModel, 'prova' => $provaModel]);
         }
 
         $validado = $request->validate([
-            'nova_data_hora' => ['required', 'date', 'after:now'],
+            'nova_data_hora' => ['required', 'date', 'after:now', 'before:+90 days'],
         ]);
 
         $provaModel->update([

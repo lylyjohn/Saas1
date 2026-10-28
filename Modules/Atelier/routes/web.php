@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Atelier\Http\Controllers\Admin\CampanhaController;
+use Modules\Atelier\Http\Controllers\Admin\ClienteCrmController;
 use Modules\Atelier\Http\Controllers\Admin\EquipaController;
 use Modules\Atelier\Http\Controllers\Admin\MedidaController;
 use Modules\Atelier\Http\Controllers\Admin\OrcamentoController;
@@ -26,19 +27,22 @@ Route::middleware(['auth', 'tenant', 'subscricao.ativa', 'servico:atelier'])
         Route::get('pedidos', [PedidoController::class, 'index'])->name('pedidos.index');
         Route::get('pedidos/criar', [PedidoController::class, 'criar'])->name('pedidos.criar');
         Route::post('pedidos', [PedidoController::class, 'guardar'])->name('pedidos.guardar');
-        Route::get('pedidos/{pedido}', [PedidoController::class, 'mostrar'])->name('pedidos.mostrar');
-        Route::put('pedidos/{pedido}', [PedidoController::class, 'atualizar'])->name('pedidos.atualizar');
-        Route::post('pedidos/{pedido}/estado', [PedidoController::class, 'avancarEstado'])->name('pedidos.avancar-estado');
-        Route::post('pedidos/{pedido}/sinal', [PedidoController::class, 'registarSinal'])->name('pedidos.registar-sinal');
-        Route::post('pedidos/{pedido}/fatura-final', [PedidoController::class, 'gerarFaturaFinal'])->name('pedidos.gerar-fatura-final');
-        Route::post('pedidos/{pedido}/pagamento-final', [PedidoController::class, 'registarPagamentoFinal'])->name('pedidos.registar-pagamento-final');
+        Route::get('pedidos/{pedido}', [PedidoController::class, 'mostrar'])->whereNumber('pedido')->name('pedidos.mostrar');
+        Route::put('pedidos/{pedido}', [PedidoController::class, 'atualizar'])->whereNumber('pedido')->name('pedidos.atualizar');
+        Route::post('pedidos/{pedido}/estado', [PedidoController::class, 'avancarEstado'])->whereNumber('pedido')->name('pedidos.avancar-estado');
+        Route::post('pedidos/{pedido}/sinal', [PedidoController::class, 'registarSinal'])->whereNumber('pedido')->name('pedidos.registar-sinal');
+        Route::post('pedidos/{pedido}/fatura-final', [PedidoController::class, 'gerarFaturaFinal'])->whereNumber('pedido')->name('pedidos.gerar-fatura-final');
+        Route::post('pedidos/{pedido}/pagamento-final', [PedidoController::class, 'registarPagamentoFinal'])->whereNumber('pedido')->name('pedidos.registar-pagamento-final');
 
-        Route::post('pedidos/{pedido}/provas', [ProvaController::class, 'guardar'])->name('provas.guardar');
-        Route::put('provas/{prova}', [ProvaController::class, 'atualizarEstado'])->name('provas.atualizar-estado');
+        Route::post('pedidos/{pedido}/provas', [ProvaController::class, 'guardar'])->whereNumber('pedido')->name('provas.guardar');
+        Route::put('provas/{prova}', [ProvaController::class, 'atualizarEstado'])->whereNumber('prova')->name('provas.atualizar-estado');
 
-        Route::get('clientes/{cliente}/medidas', [MedidaController::class, 'historico'])->name('medidas.historico');
-        Route::get('clientes/{cliente}/medidas/criar', [MedidaController::class, 'criar'])->name('medidas.criar');
+        Route::get('clientes/{cliente}/medidas', [MedidaController::class, 'historico'])->whereNumber('cliente')->name('medidas.historico');
+        Route::get('clientes/{cliente}/medidas/criar', [MedidaController::class, 'criar'])->whereNumber('cliente')->name('medidas.criar');
         Route::post('medidas', [MedidaController::class, 'guardar'])->name('medidas.guardar');
+
+        Route::get('clientes/{cliente}/crm', [ClienteCrmController::class, 'editar'])->whereNumber('cliente')->name('crm.editar');
+        Route::put('clientes/{cliente}/crm', [ClienteCrmController::class, 'atualizar'])->whereNumber('cliente')->name('crm.atualizar');
 
         Route::get('equipa', [EquipaController::class, 'index'])->name('equipa.index');
         Route::post('equipa/atribuir', [EquipaController::class, 'atribuir'])->name('equipa.atribuir');
@@ -49,16 +53,16 @@ Route::middleware(['auth', 'tenant', 'subscricao.ativa', 'servico:atelier'])
 
         Route::get('portfolio', [PortfolioController::class, 'index'])->name('portfolio.index');
         Route::post('portfolio', [PortfolioController::class, 'guardar'])->name('portfolio.guardar');
-        Route::delete('portfolio/{portfolioItem}', [PortfolioController::class, 'destruir'])->name('portfolio.destruir');
+        Route::delete('portfolio/{portfolioItem}', [PortfolioController::class, 'destruir'])->whereNumber('portfolioItem')->name('portfolio.destruir');
 
         Route::get('campanhas', [CampanhaController::class, 'index'])->name('campanhas.index');
         Route::get('campanhas/criar', [CampanhaController::class, 'criar'])->name('campanhas.criar');
         Route::post('campanhas', [CampanhaController::class, 'guardar'])->name('campanhas.guardar');
-        Route::get('campanhas/{campanha}', [CampanhaController::class, 'mostrar'])->name('campanhas.mostrar');
-        Route::post('campanhas/{campanha}/enviar', [CampanhaController::class, 'enviarAgora'])->name('campanhas.enviar-agora');
+        Route::get('campanhas/{campanha}', [CampanhaController::class, 'mostrar'])->whereNumber('campanha')->name('campanhas.mostrar');
+        Route::post('campanhas/{campanha}/enviar', [CampanhaController::class, 'enviarAgora'])->whereNumber('campanha')->name('campanhas.enviar-agora');
 
         Route::get('orcamentos', [OrcamentoController::class, 'index'])->name('orcamentos.index');
-        Route::put('orcamentos/{pedidoOrcamento}', [OrcamentoController::class, 'atualizarEstado'])->name('orcamentos.atualizar-estado');
+        Route::put('orcamentos/{pedidoOrcamento}', [OrcamentoController::class, 'atualizarEstado'])->whereNumber('pedidoOrcamento')->name('orcamentos.atualizar-estado');
     });
 
 /*
@@ -68,12 +72,13 @@ Route::middleware(['auth', 'tenant', 'subscricao.ativa', 'servico:atelier'])
 | PortalLinkService e o aviso no README sobre as limitações deste modelo.
 |--------------------------------------------------------------------------
 */
-Route::middleware(['signed'])
+Route::middleware(['throttle:60,1', 'signed'])
     ->prefix('portal/atelier')
     ->name('atelier.portal.')
     ->group(function () {
-        Route::get('{cliente}', [PortalController::class, 'mostrar'])->name('mostrar');
+        Route::get('{cliente}', [PortalController::class, 'mostrar'])->whereNumber('cliente')->name('mostrar');
         Route::match(['get', 'post'], '{cliente}/provas/{prova}/reagendar', [PortalController::class, 'reagendar'])
+            ->whereNumber(['cliente', 'prova'])
             ->name('provas.reagendar');
     });
 

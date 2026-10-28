@@ -10,6 +10,7 @@ use Modules\Core\Traits\BelongsToTenant;
 use Modules\Faturacao\Models\Cliente;
 use Modules\Faturacao\Models\Fatura;
 use Modules\Faturacao\Models\Recibo;
+use Modules\Faturacao\Support\Dinheiro;
 
 /**
  * O Pedido de Costura/Peça. Ao contrário de Fatura/Recibo, este model NÃO
@@ -128,20 +129,45 @@ class Pedido extends Model
     }
 
     /**
-     * Saldo em falta para a entrega, depois de descontado o sinal já pago.
-     * Usado tanto na view do pedido como por PedidoFaturacaoService ao
-     * emitir o recibo do saldo final.
+     * Total com IVA em CÊNTIMOS, calculado linha a linha com a mesma
+     * aritmética da fatura final (Dinheiro::calcularLinha: IVA arredondado
+     * por excesso, como exige a AGT). Assim o total do pedido coincide
+     * sempre, ao cêntimo, com o da fatura que PedidoFaturacaoService gera
+     * (uma linha para a peça + uma por material).
      */
-    public function valorTotalComIva(): float
+    public function totalComIvaCentimos(): int
     {
-        $semIva = (float) $this->valor_orcamento + (float) $this->materiais->sum('valor_total');
+        $taxa = (string) ($this->taxa_iva_aplicada ?? 0);
 
-        return round($semIva * (1 + ((float) $this->taxa_iva_aplicada / 100)), 2);
+        $linhas = [[1, (string) ($this->valor_orcamento ?? 0)]];
+
+        foreach ($this->materiais as $material) {
+            $linhas[] = [(string) $material->quantidade, (string) $material->valor_unitario];
+        }
+
+        $total = 0;
+
+        foreach ($linhas as [$quantidade, $preco]) {
+            $total += Dinheiro::centimos(Dinheiro::calcularLinha($quantidade, $preco, $taxa)['total']);
+        }
+
+        return $total;
     }
 
+    public function valorTotalComIva(): float
+    {
+        return $this->totalComIvaCentimos() / 100;
+    }
+
+    /**
+     * Saldo em falta para a entrega, depois de descontado o sinal já pago
+     * (nunca negativo). Usado na view do pedido e nas notificações.
+     */
     public function saldoEmFalta(): float
     {
-        return round($this->valorTotalComIva() - (float) ($this->valor_sinal ?? 0), 2);
+        $saldo = $this->totalComIvaCentimos() - Dinheiro::centimos($this->valor_sinal ?? 0);
+
+        return max(0, $saldo) / 100;
     }
 
     public function tipoServicoRotulo(): string

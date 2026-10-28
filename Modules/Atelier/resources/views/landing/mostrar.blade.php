@@ -83,6 +83,9 @@
 
         <form method="POST" action="{{ route('atelier.landing.solicitar-orcamento', $empresa) }}" class="space-y-4">
             @csrf
+            <div style="position:absolute;left:-9999px;" aria-hidden="true">
+                <input type="text" name="confirmacao_extra" tabindex="-1" autocomplete="off">
+            </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label class="mb-1 block text-xs font-medium text-slate-600">Nome *</label>

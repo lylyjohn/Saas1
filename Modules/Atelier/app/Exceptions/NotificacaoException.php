@@ -20,4 +20,9 @@ class NotificacaoException extends Exception
     {
         return new self("O cliente não tem contacto guardado para o canal \"{$canal}\".");
     }
+
+    public static function numeroInvalido(string $canal): self
+    {
+        return new self("O número de telefone do cliente não é válido para o canal \"{$canal}\".");
+    }
 }

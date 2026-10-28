@@ -97,7 +97,7 @@ class PedidoController extends Controller
 
         return view('atelier::pedidos.mostrar', [
             'pedido' => $pedido,
-            'proximosEstados' => $this->statusService->proximosEstadosPossiveis($pedido),
+            'proximosEstados' => $this->estadosVisiveisParaUtilizador($pedido),
             'podeEmitirFaturas' => $pedido->empresa->podeEmitirFaturas(),
             'linkPortal' => $pedido->cliente ? $this->portalLinkService->gerarLinkAcesso($pedido->cliente) : null,
             // Requisito G.3: a Costureira vê o painel de tarefas mas não
@@ -107,9 +107,33 @@ class PedidoController extends Controller
         ]);
     }
 
+    /**
+     * A Costureira só vê (e só pode usar) os botões dos pedidos que lhe foram
+     * atribuídos, e nunca os de entrega/cancelamento — em linha com
+     * AvancarEstadoPedidoRequest, que é quem realmente decide.
+     *
+     * @return array<int, string>
+     */
+    protected function estadosVisiveisParaUtilizador(Pedido $pedido): array
+    {
+        $estados = $this->statusService->proximosEstadosPossiveis($pedido);
+        $utilizador = request()->user();
+
+        if (! $utilizador->hasRole('Costureira') || $utilizador->hasAnyRole(['Administrador', 'Secretária'])) {
+            return $estados;
+        }
+
+        if ((int) $pedido->responsavel_id !== (int) $utilizador->id) {
+            return [];
+        }
+
+        return array_values(array_diff($estados, ['entregue', 'cancelado']));
+    }
+
     public function atualizar(AtualizarPedidoRequest $request, int $pedido): RedirectResponse
     {
         $pedido = Pedido::findOrFail($pedido);
+        abort_if($pedido->estaFinalizado(), 422, 'Este pedido já está finalizado e não pode ser editado.');
         $pedido->update($request->validated());
 
         return back()->with('sucesso', 'Pedido atualizado.');
@@ -125,7 +149,7 @@ class PedidoController extends Controller
                 $request->validated('novo_estado'),
                 $request->validated('motivo_cancelamento'),
             );
-        } catch (PedidoException $e) {
+        } catch (PedidoException|\DomainException|\InvalidArgumentException $e) {
             return back()->with('erro', $e->getMessage());
         }
 
@@ -138,8 +162,8 @@ class PedidoController extends Controller
         $this->garantirQuePodeEmitirFaturas($pedido->empresa);
 
         try {
-            $this->faturacaoService->registarSinal($pedido, (float) $request->validated('valor'), $request->validated('meio_pagamento'));
-        } catch (PedidoException $e) {
+            $this->faturacaoService->registarSinal($pedido, $request->validated('valor'), $request->validated('meio_pagamento'));
+        } catch (PedidoException|\DomainException|\InvalidArgumentException $e) {
             return back()->with('erro', $e->getMessage());
         } catch (Throwable $e) {
             Log::error('Falha ao registar sinal do Atelier', ['pedido_id' => $pedido->id, 'erro' => $e->getMessage()]);
@@ -157,7 +181,7 @@ class PedidoController extends Controller
 
         try {
             $fatura = $this->faturacaoService->gerarFaturaFinalRascunho($pedido, $request->validated('observacoes'));
-        } catch (PedidoException $e) {
+        } catch (PedidoException|\DomainException|\InvalidArgumentException $e) {
             return back()->with('erro', $e->getMessage());
         }
 
@@ -172,7 +196,7 @@ class PedidoController extends Controller
 
         try {
             $this->faturacaoService->registarPagamentoFinal($pedido, $request->validated('meio_pagamento'));
-        } catch (PedidoException $e) {
+        } catch (PedidoException|\DomainException|\InvalidArgumentException $e) {
             return back()->with('erro', $e->getMessage());
         } catch (Throwable $e) {
             Log::error('Falha ao registar pagamento final do Atelier', ['pedido_id' => $pedido->id, 'erro' => $e->getMessage()]);
