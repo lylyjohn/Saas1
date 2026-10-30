@@ -4,6 +4,7 @@ namespace Modules\Atelier\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Faturacao\Support\Dinheiro;
 
 class PedidoMaterial extends Model
 {
@@ -25,9 +26,10 @@ class PedidoMaterial extends Model
         return $this->belongsTo(Pedido::class);
     }
 
+    /** Aritmética exata (sem float), a mesma da linha de fatura: quantidade × preço, half-up ao cêntimo. */
     public function calcularValores(): static
     {
-        $this->valor_total = round((float) $this->quantidade * (float) $this->valor_unitario, 2);
+        $this->valor_total = Dinheiro::calcularLinha($this->quantidade, $this->valor_unitario, 0)['sem_iva'];
 
         return $this;
     }

@@ -20,24 +20,33 @@ use Throwable;
  */
 class NotificadorClienteService
 {
+    /**
+     * @return bool true se pelo menos um canal aceitou a mensagem (o e-mail
+     *              conta quando entra na fila); false se nada foi entregue —
+     *              os Jobs usam isto para só marcarem "enviado" quando é verdade.
+     */
     public function notificar(
         Cliente $cliente,
         string $assunto,
         string $mensagem,
         ?string $linkAcao = null,
         ?string $textoAcao = null,
-    ): void {
+    ): bool {
+        $entregue = false;
+
         foreach ((array) config('atelier.canais_notificacao') as $canal) {
-            $canal = trim($canal);
+            $canal = trim((string) $canal);
 
             try {
-                match ($canal) {
+                $resultado = match ($canal) {
                     'mail' => $this->enviarMail($cliente, $assunto, $mensagem, $linkAcao, $textoAcao),
                     'whatsapp' => $this->enviarViaCanal(app(WhatsAppCanal::class), $cliente, $mensagem),
                     'sms' => $this->enviarViaCanal(app(SmsCanal::class), $cliente, $mensagem),
-                    '' => null,
-                    default => Log::warning("Atelier: canal de notificação desconhecido \"{$canal}\"."),
+                    '' => false,
+                    default => $this->canalDesconhecido($canal),
                 };
+
+                $entregue = $entregue || $resultado;
             } catch (Throwable $e) {
                 Log::warning('Atelier: falha ao notificar cliente por um canal', [
                     'canal' => $canal,
@@ -46,6 +55,8 @@ class NotificadorClienteService
                 ]);
             }
         }
+
+        return $entregue;
     }
 
     /**
@@ -73,8 +84,11 @@ class NotificadorClienteService
             throw NotificacaoException::contactoEmFalta('mail');
         }
 
+        // notifyNow: a campanha já corre numa fila; enviar já (em vez de pôr
+        // outra notificação na fila) faz com que "enviado" signifique mesmo
+        // enviado, e uma falha do servidor de e-mail apareça como 'falhou'.
         Notification::route('mail', $cliente->email)
-            ->notify(new ClienteAtelierNotification($assunto, $mensagem));
+            ->notifyNow(new ClienteAtelierNotification($assunto, $mensagem));
     }
 
     protected function enviarOuFalhar(CanalNotificacaoInterface $canal, Cliente $cliente, string $mensagem): void
@@ -86,30 +100,43 @@ class NotificadorClienteService
         $canal->enviar($cliente->telefone, $mensagem);
     }
 
-    protected function enviarMail(Cliente $cliente, string $assunto, string $mensagem, ?string $linkAcao, ?string $textoAcao): void
+    protected function enviarMail(Cliente $cliente, string $assunto, string $mensagem, ?string $linkAcao, ?string $textoAcao): bool
     {
         if (! $cliente->email) {
-            return;
+            return false;
         }
 
         Notification::route('mail', $cliente->email)
             ->notify(new ClienteAtelierNotification($assunto, $mensagem, $linkAcao, $textoAcao));
+
+        return true;
     }
 
-    protected function enviarViaCanal(CanalNotificacaoInterface $canal, Cliente $cliente, string $mensagem): void
+    protected function enviarViaCanal(CanalNotificacaoInterface $canal, Cliente $cliente, string $mensagem): bool
     {
         if (! $cliente->telefone) {
-            return;
+            return false;
         }
 
         try {
             $canal->enviar($cliente->telefone, $mensagem);
+
+            return true;
         } catch (NotificacaoException $e) {
             Log::warning('Atelier: falha ao notificar cliente', [
                 'canal' => $canal->identificador(),
                 'cliente_id' => $cliente->id,
                 'erro' => $e->getMessage(),
             ]);
+
+            return false;
         }
+    }
+
+    protected function canalDesconhecido(string $canal): bool
+    {
+        Log::warning("Atelier: canal de notificação desconhecido \"{$canal}\".");
+
+        return false;
     }
 }

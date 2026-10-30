@@ -43,6 +43,11 @@ class LandingController extends Controller
             404
         );
 
+        // Honeypot: humanos nunca preenchem o campo escondido; um bot sim. Finge sucesso e não guarda nada.
+        if ($request->filled('confirmacao_extra')) {
+            return back()->with('sucesso', 'Pedido enviado! Entraremos em contacto brevemente.');
+        }
+
         PedidoOrcamento::create([
             'empresa_id' => $empresa->id,
             'nome' => $request->validated('nome'),

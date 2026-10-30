@@ -120,4 +120,35 @@ return [
     'papel_secretaria' => 'Secretária',
     'papel_costureira' => 'Costureira',
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Auditoria (out/2026)
+    |--------------------------------------------------------------------------
+    */
+
+    // Marketing só para clientes com consentimento explícito (ClienteCrm::aceita_marketing = true).
+    // false = recebem todos menos os que recusaram (comportamento antigo).
+    'marketing_exigir_opt_in' => (bool) env('ATELIER_MARKETING_OPT_IN_EXPLICITO', true),
+
+    // Pausa entre mensagens de uma campanha por WhatsApp/SMS (ms) — rajadas levam ao bloqueio do número.
+    'campanha_pausa_ms' => (int) env('ATELIER_CAMPANHA_PAUSA_MS', 500),
+
+    // true = um pedido só passa a "entregue" depois de o saldo estar pago.
+    'exigir_pagamento_para_entrega' => (bool) env('ATELIER_EXIGIR_PAGAMENTO_PARA_ENTREGA', false),
+
+    // Motivo de isenção (códigos de faturacao.motivos_isencao) usado quando o pedido tem IVA a 0%.
+    'motivo_isencao' => env('ATELIER_MOTIVO_ISENCAO'),
+
+    // Código do país acrescentado aos números nacionais de 9 dígitos (Angola = 244).
+    'telefone_codigo_pais' => env('ATELIER_TELEFONE_CODIGO_PAIS', '244'),
+
+    // WhatsApp: 'zapi' (Z-API) ou 'cloud' (Meta). Vazio = zapi se ATELIER_ZAPI_INSTANCE_ID existir, senão cloud.
+    'whatsapp_driver' => env('ATELIER_WHATSAPP_DRIVER'),
+    'whatsapp_zapi' => [
+        'base_url' => env('ATELIER_ZAPI_BASE_URL', 'https://api.z-api.io'),
+        'instance_id' => env('ATELIER_ZAPI_INSTANCE_ID'),
+        'token' => env('ATELIER_ZAPI_TOKEN'),
+        'client_token' => env('ATELIER_ZAPI_CLIENT_TOKEN'),
+    ],
 ];
